@@ -1,0 +1,5 @@
+# crec
+
+## Support Exchanges
+
+* ftx

@@ -1,0 +1,5 @@
+coins:
+  - exchange: ftx
+    symbol: BTC-PERP
+  - exchange: ftx
+    symbol: BTC/USD
