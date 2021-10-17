@@ -1,4 +1,4 @@
-package ftx
+package gmo
 
 import (
 	"bufio"
@@ -10,25 +10,20 @@ import (
 	"github.com/mitsutoshi/crec/utils"
 )
 
-type FtxWebsocketCallback struct {
+type GmoWebsocketCallback struct {
 	tradeFile *os.File
 	writer    *bufio.Writer
 }
 
-func NewWebsocketCallback(f *os.File, w *bufio.Writer) *FtxWebsocketCallback {
-	return &FtxWebsocketCallback{
+func NewWebsocketCallback(f *os.File, w *bufio.Writer) *GmoWebsocketCallback {
+	return &GmoWebsocketCallback{
 		tradeFile: f,
 		writer:    w,
 	}
 }
 
-func (c *FtxWebsocketCallback) OnReceiveTrade(t Trade) {
-	fmt.Printf("ftx(%v): %v\n", len(t.Data), t)
-
-	if t.Type == msgTypeSubscribed {
-		fmt.Println("channel has being subscribed.")
-		return
-	}
+func (c *GmoWebsocketCallback) OnReceiveTrade(t Trade) {
+	fmt.Printf("gmo: %v\n", t)
 
 	now := time.Now().UTC()
 	names := strings.Split(c.tradeFile.Name(), ".")
@@ -53,14 +48,11 @@ func (c *FtxWebsocketCallback) OnReceiveTrade(t Trade) {
 		c.writer = bufio.NewWriter(f)
 	}
 
-	for _, d := range t.Data {
-		c.writer.WriteString(fmt.Sprintf("%v,%v,%v,%.8f,%s,%v,%v\n",
-			now.Format(timeFormat),
-			d.Id,
-			d.Price,
-			d.Size,
-			d.Side,
-			d.Liquidation,
-			d.Time.Format(timeFormat)))
-	}
+	c.writer.WriteString(fmt.Sprintf("%v,%s,%s,%.8f,%v,%v\n",
+		now.Format(timeFormat),
+		t.Symbol,
+		t.Side,
+		t.Size,
+		t.Price,
+		t.Timestamp.Format(timeFormat)))
 }

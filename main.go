@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -10,7 +11,10 @@ import (
 	"time"
 
 	"github.com/go-yaml/yaml"
-	"github.com/mitsutoshi/bookkeeper/ftx"
+	"github.com/mitsutoshi/crec/bybit"
+	"github.com/mitsutoshi/crec/ftx"
+	"github.com/mitsutoshi/crec/gmo"
+	"github.com/mitsutoshi/crec/liquid"
 )
 
 const (
@@ -58,7 +62,7 @@ func loadConfig(path string) (*config, error) {
 func openSaveFile(exchange string, symbol string) (*os.File, error) {
 
 	// make file name
-	dt := time.Now().Format("20060102")
+	dt := time.Now().UTC().Format("20060102")
 	fileName := fmt.Sprintf(
 		"%s_%s_%s.csv", exchange, strings.ReplaceAll(symbol, "/", ""), dt)
 
@@ -88,19 +92,43 @@ func run() error {
 
 	errCh := make(chan string)
 	for _, coin := range c.Coins {
-		fmt.Println(coin)
 
-		// ftx
+		// check and return error
+		if coin.Exchange != "ftx" &&
+			coin.Exchange != "bybit" &&
+			coin.Exchange != "gmo" &&
+			coin.Exchange != "liquid" {
+			return fmt.Errorf("Unknow exchange: %v\n", coin.Exchange)
+		}
+
+		// create a file
+		f, err := openSaveFile(coin.Exchange, coin.Symbol)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		// create writer
+		writer := bufio.NewWriter(f)
+		defer writer.Flush()
+
+		// writer headers
+		var headers string
+		if coin.Exchange == "ftx" {
+			headers = ftx.TradeHeaders
+		} else if coin.Exchange == "bybit" {
+			headers = bybit.TradeHeaders
+		} else if coin.Exchange == "gmo" {
+			headers = gmo.TradeHeaders
+		} else if coin.Exchange == "liquid" {
+			headers = liquid.TradeHeaders
+		}
+		f.WriteString(headers + "\n")
+
 		if coin.Exchange == "ftx" {
 
-			f, err := openSaveFile(coin.Exchange, coin.Symbol)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-
 			ws := ftx.Websocket{
-				Callback: &ftx.FtxWebsocketCallback{TradeFile: f},
+				Callback: ftx.NewWebsocketCallback(f, writer),
 			}
 			if err := ws.Connect(); err != nil {
 				return err
@@ -108,16 +136,48 @@ func run() error {
 			if err := ws.SubscribeTrades(coin.Symbol); err != nil {
 				return err
 			}
-
-			// write headers
-			f.WriteString(ftx.TradeHeaders + "\n")
-
-			// start receiving
 			go ws.Receive(errCh)
 
-		} else {
-			return fmt.Errorf("Unknow exchange: %v\n", coin.Exchange)
+		} else if coin.Exchange == "bybit" {
+
+			ws := bybit.Websocket{
+				Callback: bybit.NewWebsocketCallback(f, writer),
+			}
+			if err := ws.Connect(); err != nil {
+				return err
+			}
+			if err := ws.SubscribeTrades(coin.Symbol); err != nil {
+				return err
+			}
+			go ws.Receive(errCh)
+
+		} else if coin.Exchange == "gmo" {
+
+			ws := gmo.Websocket{
+				Callback: gmo.NewWebsocketCallback(f, writer),
+			}
+			if err := ws.Connect(); err != nil {
+				return err
+			}
+			if err := ws.SubscribeTrades(coin.Symbol, true); err != nil {
+				return err
+			}
+			go ws.Receive(errCh)
+
+		} else if coin.Exchange == "liquid" {
+
+			ws := liquid.Websocket{
+				Callback: &liquid.LiquidWebsocketCallback{TradeFile: f},
+			}
+			if err := ws.Connect(); err != nil {
+				return err
+			}
+			if err := ws.SubscribeTrades(coin.Symbol, true); err != nil {
+				return err
+			}
+			go ws.Receive(errCh)
 		}
+
 	}
 
 	for {
@@ -127,7 +187,6 @@ func run() error {
 		case s := <-sig:
 			fmt.Printf("Receved signal: %v\n", s)
 			return nil
-		default:
 		}
 	}
 }

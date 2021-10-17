@@ -1,4 +1,4 @@
-module github.com/mitsutoshi/bookkeeper
+module github.com/mitsutoshi/crec
 
 go 1.16
 

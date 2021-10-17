@@ -1,5 +1,11 @@
 coins:
-  - exchange: ftx
-    symbol: BTC-PERP
+  - exchange: bybit
+    symbol: BTCUSD
+      #- exchange: ftx
+      #  symbol: BTC-PERP
   - exchange: ftx
     symbol: BTC/USD
+  - exchange: gmo
+    symbol: BTC_JPY
+  #- exchange: liquid
+  #  symbol: BTC_JPY
