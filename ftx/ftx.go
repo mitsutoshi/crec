@@ -2,13 +2,37 @@ package ftx
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/mitsutoshi/crec/base"
 	"github.com/mitsutoshi/crec/utils"
 )
+
+const (
+	TradeHeaders      = "receive_time,id,price,size,side,liquidation,time"
+	WssUrl            = "wss://ftx.com/ws" // public websocket url
+	msgTypeSubscribed = "subscribed"
+)
+
+type Trade struct {
+	Channel string `json:"channel"`
+	Market  string `json:"market"`
+	Type    string `json:"type"`
+	Data    []Data `json:"data"`
+}
+
+type Data struct {
+	Id          int       `json:"id"`
+	Price       float64   `json:"price"`
+	Size        float64   `json:"size"`
+	Side        string    `json:"side"`
+	Liquidation bool      `json:"liquidation"`
+	Time        time.Time `json:"time"`
+}
 
 type FtxWebsocketCallback struct {
 	tradeFile *os.File
@@ -22,7 +46,21 @@ func NewWebsocketCallback(f *os.File, w *bufio.Writer) *FtxWebsocketCallback {
 	}
 }
 
-func (c *FtxWebsocketCallback) OnReceiveTrade(t Trade) {
+func (c *FtxWebsocketCallback) GetSubscribeTradesParam(symbol string) string {
+	return fmt.Sprintf(`{
+		"op": "subscribe",
+		"channel": "trades",
+		"market": "%s"}`, symbol)
+}
+
+func (c *FtxWebsocketCallback) OnReceiveTrade(msg string, errCh chan<- string) {
+
+	var t Trade
+	err := json.Unmarshal([]byte(msg), &t)
+	if err != nil {
+		errCh <- fmt.Sprintf("failed to unmarchal json to ftx.Trade: %v", err)
+	}
+
 	fmt.Printf("ftx(%v): %v\n", len(t.Data), t)
 
 	if t.Type == msgTypeSubscribed {
@@ -55,12 +93,12 @@ func (c *FtxWebsocketCallback) OnReceiveTrade(t Trade) {
 
 	for _, d := range t.Data {
 		c.writer.WriteString(fmt.Sprintf("%v,%v,%v,%.8f,%s,%v,%v\n",
-			now.Format(timeFormat),
+			now.Format(base.TimeFormat),
 			d.Id,
 			d.Price,
 			d.Size,
 			d.Side,
 			d.Liquidation,
-			d.Time.Format(timeFormat)))
+			d.Time.Format(base.TimeFormat)))
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-yaml/yaml"
+	"github.com/mitsutoshi/crec/base"
 	"github.com/mitsutoshi/crec/bybit"
 	"github.com/mitsutoshi/crec/ftx"
 	"github.com/mitsutoshi/crec/gmo"
@@ -112,72 +113,44 @@ func run() error {
 		writer := bufio.NewWriter(f)
 		defer writer.Flush()
 
-		// writer headers
+		var callback base.WebsocketCallback
+		var wssUrl string
+		var originUrl string
 		var headers string
+
 		if coin.Exchange == "ftx" {
 			headers = ftx.TradeHeaders
+			callback = ftx.NewWebsocketCallback(f, writer)
+			wssUrl = ftx.WssUrl
+			originUrl = ftx.WssUrl
 		} else if coin.Exchange == "bybit" {
 			headers = bybit.TradeHeaders
+			callback = bybit.NewWebsocketCallback(f, writer)
+			wssUrl = bybit.WssUrl
+			originUrl = bybit.WssUrl
 		} else if coin.Exchange == "gmo" {
 			headers = gmo.TradeHeaders
+			callback = gmo.NewWebsocketCallback(f, writer)
+			wssUrl = gmo.WssUrl
+			originUrl = gmo.OriginUrl
 		} else if coin.Exchange == "liquid" {
 			headers = liquid.TradeHeaders
 		}
+
+		// write file headers
 		f.WriteString(headers + "\n")
 
-		if coin.Exchange == "ftx" {
-
-			ws := ftx.Websocket{
-				Callback: ftx.NewWebsocketCallback(f, writer),
-			}
-			if err := ws.Connect(); err != nil {
-				return err
-			}
-			if err := ws.SubscribeTrades(coin.Symbol); err != nil {
-				return err
-			}
-			go ws.Receive(errCh)
-
-		} else if coin.Exchange == "bybit" {
-
-			ws := bybit.Websocket{
-				Callback: bybit.NewWebsocketCallback(f, writer),
-			}
-			if err := ws.Connect(); err != nil {
-				return err
-			}
-			if err := ws.SubscribeTrades(coin.Symbol); err != nil {
-				return err
-			}
-			go ws.Receive(errCh)
-
-		} else if coin.Exchange == "gmo" {
-
-			ws := gmo.Websocket{
-				Callback: gmo.NewWebsocketCallback(f, writer),
-			}
-			if err := ws.Connect(); err != nil {
-				return err
-			}
-			if err := ws.SubscribeTrades(coin.Symbol, true); err != nil {
-				return err
-			}
-			go ws.Receive(errCh)
-
-		} else if coin.Exchange == "liquid" {
-
-			ws := liquid.Websocket{
-				Callback: &liquid.LiquidWebsocketCallback{TradeFile: f},
-			}
-			if err := ws.Connect(); err != nil {
-				return err
-			}
-			if err := ws.SubscribeTrades(coin.Symbol, true); err != nil {
-				return err
-			}
-			go ws.Receive(errCh)
+		// connect exchange's websocket
+		ws := base.Websocket{Callback: callback}
+		if err := ws.Connect(wssUrl, originUrl); err != nil {
+			return err
+		}
+		if err := ws.SubscribeTrades(coin.Symbol); err != nil {
+			return err
 		}
 
+		// start to receive data
+		go ws.Receive(errCh)
 	}
 
 	for {
