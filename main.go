@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-yaml/yaml"
 	"github.com/mitsutoshi/crec/base"
+	"github.com/mitsutoshi/crec/bitflyer"
 	"github.com/mitsutoshi/crec/bybit"
 	"github.com/mitsutoshi/crec/ftx"
 	"github.com/mitsutoshi/crec/gmo"
@@ -97,6 +98,7 @@ func run() error {
 		// check and return error
 		if coin.Exchange != "ftx" &&
 			coin.Exchange != "bybit" &&
+			coin.Exchange != "bitflyer" &&
 			coin.Exchange != "gmo" &&
 			coin.Exchange != "liquid" {
 			return fmt.Errorf("Unknow exchange: %v\n", coin.Exchange)
@@ -128,6 +130,11 @@ func run() error {
 			callback = bybit.NewWebsocketCallback(f, writer)
 			wssUrl = bybit.WssUrl
 			originUrl = bybit.WssUrl
+		} else if coin.Exchange == "bitflyer" {
+			headers = bitflyer.TradeHeaders
+			callback = bitflyer.NewWebsocketCallback(f, writer)
+			wssUrl = bitflyer.WssUrl
+			originUrl = bitflyer.WssUrl
 		} else if coin.Exchange == "gmo" {
 			headers = gmo.TradeHeaders
 			callback = gmo.NewWebsocketCallback(f, writer)
