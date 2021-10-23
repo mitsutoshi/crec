@@ -9,5 +9,13 @@ coins:
   #  symbol: BTC_JPY
   #- exchange: liquid
   #  symbol: BTC_JPY
-  - exchange: bitflyer
-    symbol: FX_BTC_JPY
+  #- exchange: bitflyer
+  #  symbol: FX_BTC_JPY
+  
+  # bitbank
+  - exchange: bitbank
+    symbol: btc_jpy
+  #- exchange: bitbank
+  #  symbol: eth_jpy
+  #- exchange: bitbank
+  #  symbol: xrp_jpy

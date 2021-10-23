@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/go-yaml/yaml"
 	"github.com/mitsutoshi/crec/base"
+	"github.com/mitsutoshi/crec/bitbank"
 	"github.com/mitsutoshi/crec/bitflyer"
 	"github.com/mitsutoshi/crec/bybit"
 	"github.com/mitsutoshi/crec/ftx"
@@ -98,6 +100,7 @@ func run() error {
 		// check and return error
 		if coin.Exchange != "ftx" &&
 			coin.Exchange != "bybit" &&
+			coin.Exchange != "bitbank" &&
 			coin.Exchange != "bitflyer" &&
 			coin.Exchange != "gmo" &&
 			coin.Exchange != "liquid" {
@@ -125,6 +128,11 @@ func run() error {
 			callback = ftx.NewWebsocketCallback(f, writer)
 			wssUrl = ftx.WssUrl
 			originUrl = ftx.WssUrl
+		} else if coin.Exchange == "bitbank" {
+			headers = bitbank.TradeHeaders
+			callback = bitbank.NewWebsocketCallback(f, writer)
+			wssUrl = bitbank.WssUrl
+			originUrl = bitbank.WssUrl
 		} else if coin.Exchange == "bybit" {
 			headers = bybit.TradeHeaders
 			callback = bybit.NewWebsocketCallback(f, writer)
@@ -150,6 +158,7 @@ func run() error {
 		// connect exchange's websocket
 		ws := base.Websocket{Callback: callback}
 		if err := ws.Connect(wssUrl, originUrl); err != nil {
+			log.Println("Failed to connect.")
 			return err
 		}
 		if err := ws.SubscribeTrades(coin.Symbol); err != nil {
@@ -171,11 +180,11 @@ func run() error {
 	}
 }
 
-type Coin struct {
+type coin struct {
 	Exchange string `yaml:"exchange"`
 	Symbol   string `yaml:"symbol"`
 }
 
 type config struct {
-	Coins []Coin `yaml:"coins"`
+	Coins []coin `yaml:"coins"`
 }
