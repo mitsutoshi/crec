@@ -80,7 +80,7 @@ func (c *GmoWebsocketCallback) OnReceiveTrade(msg string, errCh chan<- string) {
 		c.writer = bufio.NewWriter(f)
 	}
 
-	c.writer.WriteString(fmt.Sprintf("%v,%s,%s,%.8f,%v,%v\n",
+	c.writer.WriteString(fmt.Sprintf("%v,%s,%s,%.8f,%.3f,%v\n",
 		now.Format(base.TimeFormat),
 		t.Symbol,
 		t.Side,
