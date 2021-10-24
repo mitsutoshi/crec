@@ -1,7 +1,7 @@
 package base
 
 import (
-	"fmt"
+	"log"
 
 	"golang.org/x/net/websocket"
 )
@@ -28,7 +28,7 @@ func (ws *Websocket) Connect(wssUrl string, originUrl string) error {
 func (c *Websocket) SubscribeTrades(symbol string) error {
 	param := c.Callback.GetSubscribeTradesParam(symbol)
 	err := websocket.Message.Send(c.Conn, param)
-	fmt.Printf("Sent subscribe reuqest for [trade.%s]\n", symbol)
+	log.Printf("Sent subscribe reuqest for [trade.%s]\n", symbol)
 	return err
 }
 

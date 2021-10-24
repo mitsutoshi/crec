@@ -161,12 +161,20 @@ func run() error {
 			log.Println("Failed to connect.")
 			return err
 		}
+		defer ws.Conn.Close()
+		log.Printf("Connected websocket to %s\n", coin.Exchange)
+
+		// start to receive data
+		go ws.Receive(errCh)
+
+		// subscribe topic
+		if coin.Exchange == "bitbank" {
+			time.Sleep(3 * time.Second)
+		}
 		if err := ws.SubscribeTrades(coin.Symbol); err != nil {
 			return err
 		}
 
-		// start to receive data
-		go ws.Receive(errCh)
 	}
 
 	for {

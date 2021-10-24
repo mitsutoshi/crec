@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -13,10 +14,12 @@ import (
 )
 
 const (
-	TradeHeaders = "receive_time,timestamp,trade_time_ms,price,side,size,tick_direction,trade_id,cross_seq"
-	WssUrl       = "wss://stream.bitbank.cc/socket.io/?transport=websocket&EIO=3"
+	TradeHeaders = "receive_time,transaction_id,side,price,amount,executed_at"
+	WssUrl       = "wss://stream.bitbank.cc/socket.io/?transport=websocket&EIO=4"
 	keyword      = `"message",`
 )
+
+var lastTransactionId int = 0
 
 type Trade struct {
 	RoomName string  `json:"room_name"`
@@ -56,6 +59,7 @@ func (c *BitbankWebsocketCallback) GetSubscribeTradesParam(symbol string) string
 }
 
 func (c *BitbankWebsocketCallback) OnReceiveTrade(msg string, errCh chan<- string) {
+	log.Println(msg)
 	if msg[0:2] == "42" {
 
 		// exclude `["message",`
@@ -66,7 +70,7 @@ func (c *BitbankWebsocketCallback) OnReceiveTrade(msg string, errCh chan<- strin
 		if err != nil {
 			errCh <- fmt.Sprintf("failed to unmarchal json to bitbank.Trade: %v", err)
 		}
-		fmt.Printf("bitbank(%v): %v\n", len(t.Message.Data.Transactions), t)
+		//log.Printf("bitbank(%v): %v\n", len(t.Message.Data.Transactions), t)
 
 		now := time.Now().UTC()
 		names := strings.Split(c.tradeFile.Name(), ".")
@@ -91,14 +95,20 @@ func (c *BitbankWebsocketCallback) OnReceiveTrade(msg string, errCh chan<- strin
 			c.writer = bufio.NewWriter(f)
 		}
 
-		for _, t := range t.Message.Data.Transactions {
-			c.writer.WriteString(fmt.Sprintf("%v,%v,%v,%.3f,%v,%v\n",
-				now.Format(base.TimeFormat),
-				t.TransactionId,
-				t.Side,
-				t.Price,
-				t.Amount,
-				t.ExecutedAt))
+		for _, d := range t.Message.Data.Transactions {
+			if d.TransactionId > lastTransactionId {
+				c.writer.WriteString(fmt.Sprintf("%v,%v,%v,%.3f,%v,%v\n",
+					now.Format(base.TimeFormat),
+					d.TransactionId,
+					d.Side,
+					d.Price,
+					d.Amount,
+					d.ExecutedAt))
+				lastTransactionId = d.TransactionId
+			}
 		}
+
+	} else {
+		log.Printf("bitbank: %v\n", msg)
 	}
 }
