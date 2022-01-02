@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	TradeHeaders = "receive_time,id,exec_date,price,size,side,buy_child_order_acceptance_id,trade_time_ms,sell_child_order_acceptance_id"
+	TradeHeaders = "receive_time,id,exec_date,price,size,side,buy_child_order_acceptance_id,sell_child_order_acceptance_id"
 	WssUrl       = "wss://ws.lightstream.bitflyer.com/json-rpc"
 )
 
